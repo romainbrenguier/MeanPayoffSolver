@@ -82,6 +82,14 @@ expr disj(std::list<expr> e){
   return res;
 }
 
+expr conj(std::list<expr> e){
+  std::list<expr>::iterator it = e.begin();
+  expr res(*it);
+  for(++it; it != e.end(); ++it)
+    res = res && *it;
+  return res;
+}
+
 void solve_game(Game g){
     context c;
 
@@ -97,8 +105,8 @@ void solve_game(Game g){
 
     std::set<int> states = g.states();
     solver s(c);    
-    s.add(forall(x,y,max(x,y) == (ite(x < y,y,x))));
-    s.add(forall(x,y,min(x,y) == (ite(x < y,x,y))));
+    //    s.add(forall(x,y,max(x,y) == (ite(x < y,y,x))));
+    //s.add(forall(x,y,min(x,y) == (ite(x < y,x,y))));
     
 
     for(std::set<int>::iterator it = states.begin();
@@ -109,14 +117,18 @@ void solve_game(Game g){
 	std::list<Transition> successors = g.successors(*it);
 	for(std::list<Transition>::iterator sit=successors.begin(); sit!=successors.end(); ++sit)
 	  {
-	    e.push_back(mp(sit->get_dest()));
+	    if (*it % 2 == 0)
+	      e.push_back(mp(*it) <= mp(sit->get_dest()));
+	    else 
+	      e.push_back(mp(*it) >= mp(sit->get_dest()));
+
+	    // TO CHANGE: We need to take the max/min of the bias
 	    f.push_back((mp(*it) == mp(sit->get_dest())) && (mp(*it) + bias(*it)) == sit->get_weight() + bias(sit->get_dest()));
 	  }
 
-	if (*it % 2 == 0)
-	  s.add(mp(*it) == fold(min,e));
-	else
-	  s.add(mp(*it) == fold(max,e));
+	// if (*it % 2 == 0) s.add(mp(*it) == fold(min,e)); else s.add(mp(*it) == fold(max,e));
+
+	s.add(conj(e));
 
 	if(! f.empty()) 
 	  s.add(disj(f));
